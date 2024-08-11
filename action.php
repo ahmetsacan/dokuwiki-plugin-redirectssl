@@ -4,10 +4,26 @@ if(!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN',DOKU_INC.'lib/plugins/');
 require_once(DOKU_PLUGIN.'action.php');
 
 class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
-    function getInfo(){ return conf_loadfile(dirname(__FILE__).'/info.txt'); }
-	  function register($contr){
+  function getInfo(){ return conf_loadfile(dirname(__FILE__).'/info.txt'); }
+  function register($contr){
     $contr->register_hook('ACTION_ACT_PREPROCESS','BEFORE',$this,'handle_action',array());
-   }
+
+    #when user does not have permission for an action (e.g., action='show'), DW transitions to a "denied" action, which does not transition to a "login" action, but manually prints a login form.
+    # The manual handling of the login does not trigger another ACTION_ACT_PREPROCESS, so we are unable to handle it here. But Action/Denied.php:Denied::tplContent() triggers an event ACTION_DENIED_TPLCONTENT, which we can hook into.
+    $contr->register_hook('ACTION_DENIED_TPLCONTENT','BEFORE',$this,'handle_action_denied',array());
+  }
+  
+  function handle_action_denied(&$e, $param){
+    global $INPUT;
+    if (empty($INPUT->server->str('REMOTE_USER')) && actionOK('login')) {
+        $oldaction=$e->data;
+        $e->data='login';
+        $this->handle_action($e,$param);
+        $e->data=$oldaction;
+    }
+
+  }
+
   function handle_action(&$e, $param){
     if($this->isssl()) return; #already ssl, nothing to do.
     $actions=$this->getConf('actions');
