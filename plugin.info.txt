@@ -1,0 +1,6 @@
+base   redirectssl
+author Ahmet Sacan
+date   2024-08-10
+name   redirectssl plugin
+desc   redirects certain actions (e.g., login) to HTTPS.
+url    https://github.com/ahmetsacan/dokuwiki-plugin-redirectssl
