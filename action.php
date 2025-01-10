@@ -76,8 +76,8 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
     if(isset($_SERVER['SERVER_SOFTWARE']) && strpos($_SERVER['SERVER_SOFTWARE'],'mod_ssl')!==FALSE)
     return $ret=true;
     
-    try{ #need to use try-catch in case this is not an apache server.
-      if(in_array('mod_ssl', apache_get_modules())) return $ret=true;
+    try{
+      if(function_exists('apache_get_modules') && in_array('mod_ssl', apache_get_modules())) return $ret=true;
     }catch(Exception $e){}
     
     if($port=$this->httpsport()){
