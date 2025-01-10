@@ -21,7 +21,6 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
         $this->handle_action($e,$param);
         $e->data=$oldaction;
     }
-
   }
 
   function handle_action(&$e, $param){
