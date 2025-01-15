@@ -99,9 +99,9 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
       else{
         $url=$this->redirecturl($this->servername(),$port);
         #nothing sensitive and it's just the localhost server, so let's ignore any certificate errors.
-        $contextargs=['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false]];
-        $s=@file_get_contents($url, false, stream_context_create($contextargs));
-        if($s) return $ret=true;
+        $context=['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false],'http'=>['method'=>'HEAD']];
+        $s=@file_get_contents($url, false, stream_context_create($context),0,0); #getting a length of zero for efficiency; it results in empty string on successful request.
+        if($s!==false) return $ret=true;
       }
     }  
     return $ret=false;
