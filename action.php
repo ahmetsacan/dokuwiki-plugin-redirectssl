@@ -43,12 +43,17 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
       msg("Redirecting to HTTPS is disabled because I could not determine the HTTPS port number. The site admin may manually set the port number in the redirectssl plugin configuration.");
       return;
     }
- 
-    $url="https://$servername".($port==443?'':":$port").'/'.preg_replace('#^/#','',$_SERVER['REQUEST_URI']);
-    $url=str_replace("\r",rawurlencode("\r"),$url);
-    $url=str_replace("\n",rawurlencode("\n"),$url);
+    $url=$this->redirecturl($servername,$port);
     header("Location: $url");
     exit();
+  }
+  function redirecturl($servername=null,$port=null){
+    if(!isset($servername)) $servername=$this->servername();
+    if(!isset($port)) $port=$this->httpsport();
+    $url="https://$servername".(!$port||$port==443?'':":$port").'/'.preg_replace('#^/#','',$_SERVER['REQUEST_URI']);
+    $url=str_replace("\r",rawurlencode("\r"),$url);
+    $url=str_replace("\n",rawurlencode("\n"),$url);
+    return $url;
   }
 
   function isssl(){
@@ -72,6 +77,8 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
   }
   function hasssl(){
     static $ret; if(isset($ret)) return $ret;	
+    if($this->isssl()) return $ret=true;
+
     #I think the server_software string used to list the modules, but doesn't seem to be the case anymore, so the following if() is now useless.
     if(isset($_SERVER['SERVER_SOFTWARE']) && strpos($_SERVER['SERVER_SOFTWARE'],'mod_ssl')!==FALSE)
     return $ret=true;
@@ -80,13 +87,22 @@ class action_plugin_redirectssl extends DokuWiki_Action_Plugin {
       if(function_exists('apache_get_modules') && in_array('mod_ssl', apache_get_modules())) return $ret=true;
     }catch(Exception $e){}
     
-    if($port=$this->httpsport()){
-      $socket = @socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
-      if ($socket >= 0 && @socket_connect($socket,$this->servername()?:'127.0.0.1',$port)>=0){
+    if(($port=$this->httpsport())){
+      if(function_exists('socket_create')){
+        $socket = @socket_create(AF_INET,SOCK_STREAM,SOL_TCP);
+        if ($socket >= 0 && @socket_connect($socket,$this->servername()?:'127.0.0.1',$port)>=0){
+          @socket_close($socket);
+          return $ret=true;
+        }
         @socket_close($socket);
-        return $ret=true;
       }
-      @socket_close($socket);
+      else{
+        $url=$this->redirecturl($this->servername(),$port);
+        #nothing sensitive and it's just the localhost server, so let's ignore any certificate errors.
+        $contextargs=['ssl'=>['verify_peer'=>false,'verify_peer_name'=>false]];
+        $s=@file_get_contents($url, false, stream_context_create($contextargs));
+        if($s) return $ret=true;
+      }
     }  
     return $ret=false;
   }
